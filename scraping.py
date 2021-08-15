@@ -20,6 +20,7 @@ def scrape_all():
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
+        "hemispheres": hemispheres(browser),
         "last_modified": dt.datetime.now()
     }
     
@@ -56,7 +57,6 @@ def mars_news(browser):
 
 
 def featured_image(browser):
-
     # Visit URL
     url = 'https://spaceimages-mars.com'
     browser.visit(url)
@@ -93,12 +93,55 @@ def mars_facts():
         return None
     
     # Assign columns to the new DataFrame for additional clarity.
-    df.columns=['description', 'Mars', 'Earth']
+    df.columns=['Description', 'Mars', 'Earth']
     # Turn the Description column into the DataFrame's index.
-    df.set_index('description', inplace=True)
+    df.set_index('Description', inplace=True)
 
     # Convert our DataFrame back into HTML-ready code
     return df.to_html(classes="table table-striped")
+
+
+def hemispheres(browser):
+    # Visit URL
+    url = 'https://marshemispheres.com/'
+    browser.visit(url)
+    
+    # Create a list to hold the images and titles.
+    hemisphere_image_urls = [] 
+    
+    # Parse the resulting html with soup
+    html = browser.html
+    hemi_soup = soup(html, 'html.parser')
+    
+    try:
+        # Find the number of images to scan
+        pics = len(hemi_soup.select("div.item"))
+                 
+        # Using a for loop, iterate through the tags
+        for i in range(pics):
+            # Create an empty dictionary
+            hemispheres = {}
+            # Loop through the full-resolution image URL, click the link, find the Sample 
+            #image anchor tag, and get the href.
+            image_link = hemi_soup.select("div.description a")[i].get('href')
+            browser.visit(f'https://marshemispheres.com/{image_link}')
+            sample_soup = soup(browser.html, 'html.parser')
+            img_url = sample_soup.select_one("div.downloads ul li a").get('href')
+            # Retrieve the full-resolution image URL string and title for the hemisphere image
+            title = sample_soup.select_one("h2.title").get_text()
+            hemispheres = {
+                'img_url': url + img_url,
+                'title': title}
+            # Add the dictionary with the image URL string and the hemisphere image title to the list
+            hemisphere_image_urls.append(hemispheres)
+            # Navigate back to the beginning to get the next hemisphere image
+            browser.back()
+        
+    except BaseException:
+        return None
+    
+    # Return the list that holds the dictionary of each image url and title.
+    return hemisphere_image_urls
 
 # Tells Flask our script is complete and ready for action.
 if __name__ == "__main__":
